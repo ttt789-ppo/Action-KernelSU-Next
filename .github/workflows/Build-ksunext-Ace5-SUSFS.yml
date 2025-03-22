@@ -49,9 +49,9 @@ jobs:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 24576    # 关键修复1
-          temp-reserve-mb: 8192
-          swap-size-mb: 16384       #关键修复1
+          root-reserve-mb: 1024     # 仅保留必要内存，其余用于 Swap
+          temp-reserve-mb: 1024
+          swap-size-mb: 65536       # 关键！设置 64GB Swap（需远大于物理内存）
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
@@ -152,6 +152,7 @@ jobs:
         run: |
           cd kernel_workspace
           export LTO=thin
+          make -j$(($(nproc)/2))
           ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
       - name: Make AnyKernel3
         run: |
