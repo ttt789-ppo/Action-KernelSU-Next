@@ -1,4 +1,4 @@
-name: KernelSU Build (Stable Version)
+name: KernelSU Build (ACE5)
 on:
   workflow_dispatch:
     inputs:
