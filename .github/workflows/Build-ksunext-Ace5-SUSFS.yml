@@ -49,13 +49,14 @@ jobs:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 1024     # 仅保留必要内存，其余用于 Swap
-          temp-reserve-mb: 1024
-          swap-size-mb: 65536       # 关键！设置 64GB Swap（需远大于物理内存）
+          root-reserve-mb: 24576
+          temp-reserve-mb: 8192
+          swap-size-mb: 16384
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+
       - name: Configure Git
         run: |
           git config --global user.name "build"
@@ -150,15 +151,17 @@ jobs:
 
       - name: Build kernel
         run: |
-          cd kernel_workspace
-          export LTO=thin
-          make -j$(($(nproc)/2))
-          ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+         cd kernel_workspace
+         export LTO=thin
+         #./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+         ./kernel_platform/build_with_bazel.py \
+            -t pineapple \
+            gki \
       - name: Make AnyKernel3
         run: |
-         git clone https://github.com/Numbersf/AnyKernel3 --depth=1
-         rm -rf ./AnyKernel3/.git
-         cp kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/dist/Image ./AnyKernel3/
+          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
+          rm -rf ./AnyKernel3/.git
+          cp kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/Image ./AnyKernel3/
 
       - name: Download Latest SUSFS Module from CI
         if: ${{ github.event.inputs.SUSFS_CI == 'true' }}
