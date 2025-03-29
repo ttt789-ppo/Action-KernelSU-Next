@@ -41,6 +41,8 @@ on:
         required: true
         type: boolean
         default: true
+  schedule:
+    - cron: '0 */8 * * *'
 jobs:
   build:
     runs-on: ubuntu-latest
