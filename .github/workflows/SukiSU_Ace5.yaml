@@ -1,4 +1,4 @@
-name: 一加ace5_sukisu
+name: 编译一加Ace5_sukisu内核
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ on:
       KERNEL_NAME:
         description: "修改内核名称"
         required: true
-        default: '-android14-11-o-g9a0c2e9c9fbb'
+        default: '-android14-11-o-g1132d864665d'
       kernelsu_variant:
         description: "选择 KSU"
         required: true
@@ -131,7 +131,7 @@ jobs:
             cd kernel_workspace/kernel_platform
             curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash ${{ env.BRANCH }}
             cd ./KernelSU
-            KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12505)
+            KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 12507)
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           fi
 
@@ -148,9 +148,17 @@ jobs:
             git clone https://github.com/ShirkNeko/SukiSU_patch.git
             cd kernel_platform
 
+            # 复制SUSFS补丁
             cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-$ANDROID_VERSION-$KERNEL_VERSION.patch ./common/
             cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+            # zram lz4kd
+            #cp -r ../SukiSU_patch/other/lz4k/include/linux/* ./common/include/linux
+            #cp -r ../SukiSU_patch/other/lz4k/lib/* ./common/lib
+            #cp -r ../SukiSU_patch/other/lz4k/crypto/* ./common/crypto
+
+
+
             
             echo "正在给内核打susfs补丁"
             cd ./common
@@ -198,6 +206,7 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           
+          # 添加SUSFS配置设置
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -213,6 +222,14 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+          
+          #echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
+          #echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
+          #echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
+          #echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+          # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
 
