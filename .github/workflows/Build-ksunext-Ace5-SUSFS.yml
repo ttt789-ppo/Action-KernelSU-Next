@@ -40,7 +40,7 @@ on:
         description: "SUSFS调用CI"
         required: true
         type: boolean
-        default: false
+        default: true
   schedule:
     - cron: '0 */8 * * *'
 jobs:
@@ -56,7 +56,7 @@ jobs:
       BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD || 'gki' }}
       KSUNEXT_ENABLED: ${{ github.event.inputs.KSUNEXT_ENABLED || 'true' }}
       SUSFS_ENABLED: ${{ github.event.inputs.SUSFS_ENABLED || 'true' }}
-      SUSFS_CI: ${{ github.event.inputs.SUSFS_CI || 'false' }}
+      SUSFS_CI: ${{ github.event.inputs.SUSFS_CI || 'true' }}
 
     steps:
       - name: Maximize build space
