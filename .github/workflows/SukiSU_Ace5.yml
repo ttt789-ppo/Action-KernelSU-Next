@@ -240,15 +240,28 @@ jobs:
           dir1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ env.CPUD }}-gki/dist/"
           dir2="./kernel_workspace/kernel_platform/common/out/arch/arm64/boot/"
           dir3="./kernel_workspace/kernel_platform/out/msm-${{ env.CPUD }}-${{ env.CPUD }}-gki/dist/"
-          image_path=$(find "$dir1" "$dir2" "$dir3" -name "Image" | head -n 1)
-          if [ -n "$image_path" ]; then
-            cp "$image_path" "$dir1"
-            cp "$image_path" "./AnyKernel3/Image"
+          target1="./AnyKernel3/"
+          target2="./kernel_workspace/kernel"
+          if find "$dir1" -name "Image" | grep -q "Image"; then
+            image_path="$dir1"Image
+          elif find "$dir2" -name "Image" | grep -q "Image"; then
+            image_path="$dir2"Image
+          elif find "$dir3" -name "Image" | grep -q "Image"; then
+            image_path="$dir3"Image
           else
-            echo "Image file not found"
+            image_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "Image" | head -n 1)
+          fi
+          if [ -n "$image_path" ] && [ -f "$image_path" ]; then
+            mkdir -p "$dir1"
+            if [ "$(realpath "$image_path")" != "$(realpath "$dir1"Image)" ]; then
+              cp "$image_path" "$dir1"
+            else
+              echo "源文件与目标相同，跳过复制"
+            fi
+          else
+            echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
-
       - name: Apply patch_linux and replace Image
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' }}
         run: |
@@ -256,22 +269,25 @@ jobs:
           curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
           chmod +x patch_linux
           ./patch_linux
+          rm -f Image
           mv oImage Image
           cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
-
+          cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
       - name: Reproduction of documents
         if: ${{ env.kernelsu_variant == 'SukiSU' }}
         run: |
-          cp ./kernel_workspace/kernel_platform/out/msm-kernel-${{ env.CPUD }}-gki/dist/Image $GITHUB_WORKSPACE/AnyKernel3/Image
-
+          cd kernel_workspace/kernel_platform/out/msm-kernel-${{ env.CPUD }}-gki/dist
+          cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
+          cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
+         
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
-          path: ./AnyKernel3/*
+         name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
+         path: ./AnyKernel3/*
 
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-          name: Image_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
-          path: kernel_workspace/kernel_platform/out/msm-kernel-${{ env.CPUD }}-gki/dist/Image
+         name: Image_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
+         path: kernel_workspace/kernel
