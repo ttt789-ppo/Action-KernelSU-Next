@@ -22,10 +22,6 @@ on:
         description: "内核版本"
         required: true
         default: '6.1'
-      KERNEL_NAME:
-        description: "修改内核名称"
-        required: false
-        default: '-android14-11-o-g1132d864665d'
       kernelsu_variant:
         description: "选择 KSU"
         required: true
@@ -72,7 +68,6 @@ jobs:
           echo "CPUD=pineapple" >> $GITHUB_ENV
           echo "ANDROID_VERSION=android14" >> $GITHUB_ENV
           echo "KERNEL_VERSION=6.1" >> $GITHUB_ENV
-          echo "KERNEL_NAME=-android14-11-o-g1132d864665d" >> $GITHUB_ENV
           echo "kernelsu_variant=SukiSU-Ultra" >> $GITHUB_ENV
           echo "kernelsu_version=main" >> $GITHUB_ENV
           echo "SUSFS_ENABLED=true" >> $GITHUB_ENV
@@ -86,7 +81,6 @@ jobs:
           echo "CPUD=${{ github.event.inputs.CPUD }}" >> $GITHUB_ENV
           echo "ANDROID_VERSION=${{ github.event.inputs.ANDROID_VERSION }}" >> $GITHUB_ENV
           echo "KERNEL_VERSION=${{ github.event.inputs.KERNEL_VERSION }}" >> $GITHUB_ENV
-          echo "KERNEL_NAME=${{ github.event.inputs.KERNEL_NAME }}" >> $GITHUB_ENV
           echo "kernelsu_variant=${{ github.event.inputs.kernelsu_variant }}" >> $GITHUB_ENV
           echo "kernelsu_version=${{ github.event.inputs.kernelsu_version }}" >> $GITHUB_ENV
           echo "SUSFS_ENABLED=${{ github.event.inputs.SUSFS_ENABLED }}" >> $GITHUB_ENV
@@ -222,7 +216,6 @@ jobs:
           if [[ "${{ env.KERNEL_VERSION }}" == "6.1" || "${{ env.KERNEL_VERSION }}" == "6.6" ]]; then
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
           fi
-          sed -i '$s|echo "\$res"|echo "\${{ env.KERNEL_NAME }}"|' ./common/scripts/setlocalversion
 
       - name: Build kernel
         run: |
