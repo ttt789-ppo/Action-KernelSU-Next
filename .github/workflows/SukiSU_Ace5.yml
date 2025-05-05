@@ -118,9 +118,8 @@ jobs:
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ env.CPU }} -m ${{ env.FEIL }}.xml --depth=1
           repo sync
-          # 移除临时文件并重置Git状态
-          git reset --hard
-          git clean -fdx
+          # 重置仓库状态，确保初始干净
+          repo forall -c 'git reset --hard && git clean -fdx'
           
       - name: SukiSU-Ultra & SukiSU version
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' || env.kernelsu_variant == 'SukiSU' }}
@@ -219,27 +218,30 @@ jobs:
       - name: Commit all modifications
         run: |
           cd kernel_workspace/kernel_platform
-          git config --global --add safe.directory '*'  # 修复Git安全目录问题
+          # 修复Git安全目录和跨文件系统问题
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
+          git config --global --add safe.directory "*"
+          export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+          # 提交所有修改
           git add .
-          git commit -m "Apply build modifications" || echo "No changes to commit"
-          
+          git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "Apply build modifications" || echo "No changes to commit"
+          # 二次清理未跟踪文件
+          git clean -fdx
 
       - name: Disable LOCALVERSION_AUTO and clean config
         run: |
           cd kernel_workspace/kernel_platform
-          # 关闭CONFIG_LOCALVERSION_AUTO
+          # 关闭自动版本附加
           sed -i 's/CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/' ./common/arch/arm64/configs/gki_defconfig
-          # 设置LOCALVERSION为空
           echo "CONFIG_LOCALVERSION=" >> ./common/arch/arm64/configs/gki_defconfig
 
       - name: Build kernel
         run: |
           cd kernel_workspace
-          # 构建前再次清理环境
+          # 构建前清理环境
           make mrproper
-          # 执行构建命令
           ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
-
+          
       # 后续步骤保持不变
       - name: Make AnyKernel3
         run: |
