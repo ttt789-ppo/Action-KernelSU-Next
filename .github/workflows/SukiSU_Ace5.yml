@@ -119,8 +119,6 @@ jobs:
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ env.CPU }} -m ${{ env.FEIL }}.xml --depth=1
           repo sync
-          # 强制重置所有子仓库状态
-          repo forall -c 'git reset --hard && git clean -fdx'
 
       - name: SukiSU-Ultra & SukiSU version
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' || env.kernelsu_variant == 'SukiSU' }}
