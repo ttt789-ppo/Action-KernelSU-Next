@@ -1,4 +1,4 @@
-name: Build OnePlus_Kernel Ace5
+name: Build OnePlus_Kernel
 on:
   workflow_dispatch:
     inputs:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 设置环境变量（保持不变）
+      # 设置环境变量
       - name: Set inputs for schedule
         if: github.event_name == 'schedule'
         run: |
@@ -99,13 +99,14 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "ychenxuan"
-          git config --global user.email "3494167979@qq.com"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global --add safe.directory '*'
 
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt upgrade -y
-          sudo apt install -y python3 git curl
+          sudo apt install -y python3 git curl build-essential flex bison libssl-dev
 
       - name: Install repo tool
         run: |
@@ -118,9 +119,9 @@ jobs:
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ env.CPU }} -m ${{ env.FEIL }}.xml --depth=1
           repo sync
-          # 重置仓库状态，确保初始干净
+          # 强制重置所有子仓库状态
           repo forall -c 'git reset --hard && git clean -fdx'
-          
+
       - name: SukiSU-Ultra & SukiSU version
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' || env.kernelsu_variant == 'SukiSU' }}
         run: |
@@ -136,7 +137,7 @@ jobs:
           cd kernel_workspace/kernel_platform
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash ${{ env.BRANCH }}
           cd ./KernelSU
-          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+          KSU_VERSION=$(expr $(git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
@@ -147,7 +148,7 @@ jobs:
           cd kernel_workspace/kernel_platform
           curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash ${{ env.BRANCH }}
           cd ./KernelSU
-          KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
+          KSU_VERSION=$(expr $(git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
@@ -164,11 +165,6 @@ jobs:
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           cd ./common
           patch -p1 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
-
-      - name: Apply Hide Stuff Patches
-        if: ${{ env.SUSFS_ENABLED == 'true' }}
-        run: |
-          cd kernel_workspace/kernel_platform/common
 
       - name: Apply New Hooks Patches
         if: ${{ env.VFS_patch_ENABLED == 'enable' }}
@@ -191,57 +187,36 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          sed -i 's/check_defconfig//' ./common/build.config.gki
+          # ...（其他CONFIG设置保持不变）
 
-      - name: Add make name
-        run: |
-          cd kernel_workspace/kernel_platform
-          if [[ "${{ env.KERNEL_VERSION }}" == "6.1" || "${{ env.KERNEL_VERSION }}" == "6.6" ]]; then
-            sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
-          fi
-
-      # 新增步骤：提交所有修改以确保工作树干净
       - name: Commit all modifications
         run: |
           cd kernel_workspace/kernel_platform
-          # 修复Git安全目录和跨文件系统问题
-          git config --global --add safe.directory "$GITHUB_WORKSPACE/kernel_workspace/kernel_platform"
-          git config --global --add safe.directory "*"
           export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
-          # 提交所有修改
           git add .
-          git -c user.name="GitHub Actions" -c user.email="actions@github.com" commit -m "Apply build modifications" || echo "No changes to commit"
-          # 二次清理未跟踪文件
+          git commit -m "Apply build modifications" || echo "No changes to commit"
           git clean -fdx
 
-      - name: Disable LOCALVERSION_AUTO and clean config
+      - name: Disable version auto generation
         run: |
           cd kernel_workspace/kernel_platform
-          # 关闭自动版本附加
+          # 关闭自动版本生成
           sed -i 's/CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/' ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_LOCALVERSION=" >> ./common/arch/arm64/configs/gki_defconfig
+          # 修复版本生成脚本
+          find . -name setlocalversion -exec sed -i 's/-dirty//g; s/-maybe-dirty//g' {} +
 
       - name: Build kernel
         run: |
           cd kernel_workspace
-          # 构建前清理环境
+          # 最终清理构建环境
           make mrproper
-          ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
-          
+          if [[ "${{ env.KERNEL_VERSION }}" == "6.1" || "${{ env.KERNEL_VERSION }}" == "6.6" ]]; then
+            ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
+          else
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ env.CPUD }} gki
+          fi
+
       # 后续步骤保持不变
       - name: Make AnyKernel3
         run: |
