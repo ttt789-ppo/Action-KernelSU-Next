@@ -222,9 +222,7 @@ jobs:
           git config --global --add safe.directory '*'  # 修复Git安全目录问题
           git add .
           git commit -m "Apply build modifications" || echo "No changes to commit"
-          # 二次检查Git状态，确保无未跟踪文件
-          git status
-          git clean -fdx  # 强制清理未跟踪文件
+          
 
       - name: Disable LOCALVERSION_AUTO and clean config
         run: |
