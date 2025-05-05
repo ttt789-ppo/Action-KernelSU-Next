@@ -1,4 +1,4 @@
-name: Build OnePlus_Kernel
+name: Build OnePlus_Kernel Ace5
 on:
   workflow_dispatch:
     inputs:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 设置环境变量
+      # 设置环境变量（保持不变）
       - name: Set inputs for schedule
         if: github.event_name == 'schedule'
         run: |
@@ -118,11 +118,9 @@ jobs:
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ env.CPU }} -m ${{ env.FEIL }}.xml --depth=1
           repo sync
+          # 移除无效的sed命令，改为后续提交更改
           rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          sed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion
 
       - name: SukiSU-Ultra & SukiSU version
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' || env.kernelsu_variant == 'SukiSU' }}
@@ -217,6 +215,13 @@ jobs:
             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
           fi
 
+      # 新增步骤：提交所有修改以确保工作树干净
+      - name: Commit all modifications
+        run: |
+          cd kernel_workspace/kernel_platform
+          git add .
+          git commit -m "Apply build modifications" || echo "No changes to commit"
+
       - name: Build kernel
         run: |
           cd kernel_workspace
@@ -226,6 +231,7 @@ jobs:
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ env.CPUD }} gki
           fi
 
+      # 后续步骤保持不变
       - name: Make AnyKernel3
         run: |
           git clone https://github.com/Kernel-SU/AnyKernel3 --depth=1
@@ -255,6 +261,7 @@ jobs:
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
+
       - name: Apply patch_linux and replace Image
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' }}
         run: |
@@ -266,21 +273,22 @@ jobs:
           mv oImage Image
           cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
+
       - name: Reproduction of documents
         if: ${{ env.kernelsu_variant == 'SukiSU' }}
         run: |
           cd kernel_workspace/kernel_platform/out/msm-kernel-${{ env.CPUD }}-gki/dist
           cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
-         
+
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
-         name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
-         path: ./AnyKernel3/*
+          name: AnyKernel3_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
+          path: ./AnyKernel3/*
 
       - name: Upload Image
         uses: actions/upload-artifact@v4
         with:
-         name: Image_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
-         path: kernel_workspace/kernel
+          name: Image_KernelSU_${{ env.KSUVER }}_${{ env.FEIL }}
+          path: kernel_workspace/kernel
