@@ -209,8 +209,6 @@ jobs:
       - name: Build kernel
         run: |
           cd kernel_workspace
-          # 最终清理构建环境
-          make mrproper
           if [[ "${{ env.KERNEL_VERSION }}" == "6.1" || "${{ env.KERNEL_VERSION }}" == "6.6" ]]; then
             ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
           else
