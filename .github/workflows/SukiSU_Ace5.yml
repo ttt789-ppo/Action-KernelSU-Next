@@ -118,10 +118,10 @@ jobs:
           mkdir kernel_workspace && cd kernel_workspace
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ env.CPU }} -m ${{ env.FEIL }}.xml --depth=1
           repo sync
-          # 移除无效的sed命令，改为后续提交更改
-          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
-
+          # 移除临时文件并重置Git状态
+          git reset --hard
+          git clean -fdx
+          
       - name: SukiSU-Ultra & SukiSU version
         if: ${{ env.kernelsu_variant == 'SukiSU-Ultra' || env.kernelsu_variant == 'SukiSU' }}
         run: |
@@ -219,17 +219,28 @@ jobs:
       - name: Commit all modifications
         run: |
           cd kernel_workspace/kernel_platform
+          git config --global --add safe.directory '*'  # 修复Git安全目录问题
           git add .
           git commit -m "Apply build modifications" || echo "No changes to commit"
+          # 二次检查Git状态，确保无未跟踪文件
+          git status
+          git clean -fdx  # 强制清理未跟踪文件
+
+      - name: Disable LOCALVERSION_AUTO and clean config
+        run: |
+          cd kernel_workspace/kernel_platform
+          # 关闭CONFIG_LOCALVERSION_AUTO
+          sed -i 's/CONFIG_LOCALVERSION_AUTO=y/# CONFIG_LOCALVERSION_AUTO is not set/' ./common/arch/arm64/configs/gki_defconfig
+          # 设置LOCALVERSION为空
+          echo "CONFIG_LOCALVERSION=" >> ./common/arch/arm64/configs/gki_defconfig
 
       - name: Build kernel
         run: |
           cd kernel_workspace
-          if [[ "${{ env.KERNEL_VERSION }}" == "6.1" || "${{ env.KERNEL_VERSION }}" == "6.6" ]]; then
-            ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
-          else
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ env.CPUD }} gki
-          fi
+          # 构建前再次清理环境
+          make mrproper
+          # 执行构建命令
+          ./kernel_platform/build_with_bazel.py -t ${{ env.CPUD }} gki --action_env=KSU_VERSION
 
       # 后续步骤保持不变
       - name: Make AnyKernel3
